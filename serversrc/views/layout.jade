@@ -1,0 +1,30 @@
+doctype html
+html
+  head
+    title= title
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    link(rel='stylesheet', href='/stylesheets/sticky-footer.css')
+    link(rel='stylesheet', href='/vendor/bootstrap/dist/css/bootstrap.css')
+    link(rel='stylesheet', href='/vendor/bootstrap/dist/css/bootstrap-theme.css')
+
+  body
+
+    include navbar.jade
+    
+  .row
+    .col-0.col-sm-0.col-lg-2
+    .col-lg-8
+      block content
+    .col-0.col-sm-0.col-lg-2
+
+  .row
+    .col-0.col-sm-0.col-lg-2
+    block footer
+      div#footer.main-block.col-lg-8
+        div.credit &copy;&nbsp;Intel Corporation, 2014
+    .col-0.col-sm-0.col-lg-2
+
+block basejs
+  script(type='text/javascript', src='/vendor/requirejs/require.js')
+  script(type='text/javascript', src='/vendor/require.config.js')
+block js

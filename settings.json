@@ -1,0 +1,15 @@
+{
+ "server": {
+    "port": 3000
+  },
+
+  "db": {
+    "server": "mongodb://localhost/sportscal?w=1",
+    "options": {"w": 1, "slaveOk": true}
+  },
+
+  "app": {
+    "name": ""
+  }
+
+}

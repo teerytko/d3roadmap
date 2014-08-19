@@ -1,0 +1,27 @@
+{
+  "name": "d3roadmap",
+  "version": "0.0.1",
+  "authors": [
+    "teemu.rytkonen@gmail.com"
+  ],
+  "description": "Roadmap ui",
+  "main": "server.coffee",
+  "keywords": [
+    "roadmap"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "~3.2.0",
+    "jquery": "~2.1.1",
+    "requirejs": "~2.1.14",
+    "bootstrap-editable": "*",
+    "bootstrap-datepicker": "~1.3.0"
+  }
+}
