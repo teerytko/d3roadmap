@@ -1,5 +1,5 @@
 require ['jquery', 'bootstrap', 'bseditable'],
-($, bootstrap) ->
+($, bootstrap, bseditable) ->
 
   $(document).ready ->
     console.log "Test"
