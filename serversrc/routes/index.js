@@ -4,5 +4,5 @@
  */
 
 exports.index = function(req, res){
-  res.render('index', { title: 'Sports' });
+  res.render('index', { title: 'D3 Roadmaps' });
 };
