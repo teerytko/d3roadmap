@@ -1,7 +1,10 @@
-require ['jquery', 'bootstrap', 'bseditable', 'js/boxesd3'],
-($, bootstrap, bseditable,  boxesd3) ->
+require ['jquery', 'bootstrap', 'bseditable', 'js/roadmap'],
+($, bootstrap, bseditable,  Roadmap) ->
 
   $(document).ready ->
     console.log "Test"
 
-  boxesd3('.chart')
+  roadmap = new Roadmap('#example-roadmap', {
+  })
+
+  roadmap.draw()
