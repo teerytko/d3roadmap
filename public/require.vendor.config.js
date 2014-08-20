@@ -1,12 +1,12 @@
 (function() {
   require.config({
-    baseUrl: '/vendor/',
+    baseUrl: '/',
     paths: {
-      jquery:     'jquery/dist/jquery',
-      bootstrap:  'bootstrap/dist/js/bootstrap',
-      bseditable: 'x-editable/dist/bootstrap3-editable/js/bootstrap-editable.min',
-      bsdatepicker: 'bootstrap-datepicker/js/bootstrap-datepicker',
-      d3: 'd3/d3'
+      jquery:     'vendor/jquery/dist/jquery',
+      bootstrap:  'vendor/bootstrap/dist/js/bootstrap',
+      bseditable: 'vendor/x-editable/dist/bootstrap3-editable/js/bootstrap-editable.min',
+      bsdatepicker: 'vendor/bootstrap-datepicker/js/bootstrap-datepicker',
+      d3: 'vendor/d3/d3'
     },
     shim: {
       bsdatepicker: {

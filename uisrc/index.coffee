@@ -1,7 +1,7 @@
-require ['jquery', 'bootstrap', 'bseditable', 'd3'],
-($, bootstrap, bseditable, d3) ->
+require ['jquery', 'bootstrap', 'bseditable', 'js/boxesd3'],
+($, bootstrap, bseditable,  boxesd3) ->
 
   $(document).ready ->
     console.log "Test"
-    d3.select("body").transition()
-        .style("background-color", "gray");
+
+  boxesd3('.chart')
