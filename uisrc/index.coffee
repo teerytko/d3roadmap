@@ -10,6 +10,19 @@ require ['jquery', 'bootstrap', 'bseditable', 'js/roadmap'],
     width: elem.width()
   })
 
-  roadmap.draw()
+  data = [{
+    name: "Test FOOBAR PO"
+    startdate: new Date(2014, 8, 1),
+    enddate: new Date(2014, 8, 7),
+    },
+    {
+    name: "Product B"
+    startdate: new Date(2014, 10, 11),
+    enddate: new Date(2014, 10, 18),
+    }    
+  ]
+  roadmap.draw(data)
 
-  window.resize ()
+  $(roadmap).on "select", (e, data) ->
+    console.log data
+

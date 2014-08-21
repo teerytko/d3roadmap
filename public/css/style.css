@@ -1,9 +1,9 @@
 .chart rect {
-  fill: steelblue;
+  fill: #0099FF;
 }
 
 .chart text {
-  font: 10px sans-serif;
+  font: 12px sans-serif;
   text-anchor: end;
 }
 
