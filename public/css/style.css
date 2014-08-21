@@ -9,6 +9,7 @@
 
 .axis text {
   font: 10px sans-serif;
+  fill: black;
 }
 
 .axis path,
@@ -16,4 +17,8 @@
   fill: none;
   stroke: #000;
   shape-rendering: crispEdges;
+}
+.axis .minor line {
+  stroke: #777;
+  stroke-dasharray: 2,2;
 }
