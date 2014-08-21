@@ -20,5 +20,4 @@
 }
 .axis .minor line {
   stroke: #777;
-  stroke-dasharray: 2,2;
 }

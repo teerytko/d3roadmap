@@ -10,18 +10,16 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
   class RoadmapD3
     constructor: (@target, options = {}) ->
       @options = utils.extend(defaults, options)
-      @graph = d3.select(@target)
-        .append("svg")
       self = @
       window.onresize = (e) -> self.updateWindow(e, self)
 
-    addAxis: (width, height, rangex) ->
+    createAxis: (width, height, rangex) ->
       @x = d3.time.scale()
           .range([0, width])
       formatWeek = (d) ->
         format = d3.time.format("%U.%w")
         return "Week #{format(d)}"
-      xAxis = d3.svg.axis()
+      @xAxis = d3.svg.axis()
           .scale(@x)
           .orient("bottom")
           .tickSize(height-@options.margin.top)
@@ -30,33 +28,46 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
       rangex[0] = rangex[0].setDate(rangex[0].getDate()-7)
       rangex[1] = rangex[1].setDate(rangex[1].getDate()+7)
       @x.domain(rangex)
-      @graph.append("g")
-          .attr("class", "x axis")
-          .call(xAxis);
-      @graph.selectAll("g").filter( (d) -> return d )
-        .classed("minor", true)
 
     updateWindow: (e, self) ->
       x = $(".chart").parent().width()
       self.options.width=x
       $(self.target).empty()
-      self.graph = d3.select(self.target)
-        .append("svg")      
       self.draw(self.lastdata)
 
-    draw: (data) ->
-      @lastdata = data
-      rangex = [d3.min(data, (d) -> return new Date(d.startdate) ),
-                d3.max(data, (d) -> return new Date(d.enddate) )]
+    zoomed: () ->
+      @svg.select(".x.axis").call(@xAxis)
+      # Set the y translation to 0 to prevent panning that dimension
+      d3.event.translate[1] = 0
+      @graph.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")")
 
-      @graph
-        .attr("class", "chart")
+    draw: (data) ->
+      self = @
+      @lastdata = data
       width = @options.width - @options.margin.left - @options.margin.right
       height = @options.height - @options.margin.top - @options.margin.bottom
+      now = new Date
+      rangex = [d3.min(data, (d) -> return new Date(d.startdate) ),
+                d3.max(data, (d) -> return new Date(d.enddate) )]
+      @createAxis(width, height, rangex)
+      zoom = d3.behavior.zoom()
+        .x(@x)
+        .scaleExtent([1, 10])
+        .on("zoom", () -> self.zoomed());
+      @svg = d3.select(self.target)
+        .append("svg")      
+          .attr("width", width)
+          .attr("height", height)
+          .call(zoom)
+      @svg.append("g")
+          .attr("transform", "translate(" + 0 + "," + 0 + ")")
+      @svg.append("g")
+        .attr("class", "x axis")
+        .attr("stroke-dasharray", "2,2")
+        .call(@xAxis);
+      @graph = @svg.append("g")
       @graph
-        .attr("width", width)
-        .attr("height", height)
-      @addAxis(width, height, rangex)
+        .attr("class", "chart")
 
       blocks = []
       ypos = 10
@@ -72,6 +83,14 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
         }
         ypos += @options.lineheight+20
         blocks.push block
+        # Add line for now
+      nowx = @x(now)
+      @graph.append("line")
+        .attr("x1", nowx)
+        .attr("y1", 0)
+        .attr("x2", nowx)
+        .attr("y2", height-@options.margin.top)
+        .attr("stroke", "red")
 
       # Add roadmap items
       nodes = @graph.selectAll("rect")
@@ -102,7 +121,6 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
         .text( (d) -> return d.name )
         .attr("fill", "black")
 
-      self = @
       nodes.on("click", (d) -> 
         $(self).trigger "select", d
       )

@@ -12,13 +12,13 @@ require ['jquery', 'bootstrap', 'bseditable', 'js/roadmap'],
 
   data = [{
     name: "Test FOOBAR PO"
-    startdate: new Date(2014, 8, 1),
-    enddate: new Date(2014, 8, 7),
+    startdate: new Date(2014, 7, 1),
+    enddate: new Date(2014, 7, 7),
     },
     {
     name: "Product B"
-    startdate: new Date(2014, 10, 11),
-    enddate: new Date(2014, 10, 18),
+    startdate: new Date(2014, 9, 11),
+    enddate: new Date(2014, 9, 18),
     }    
   ]
   roadmap.draw(data)
