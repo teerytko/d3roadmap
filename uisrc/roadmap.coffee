@@ -30,7 +30,7 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
       @x.domain(rangex)
 
     updateWindow: (e, self) ->
-      x = $(".chart").parent().width()
+      x = $(".chart").parent().parent().width()
       self.options.width=x
       $(self.target).empty()
       self.draw(self.lastdata)
@@ -39,26 +39,46 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
       @svg.select(".x.axis").call(@xAxis)
       # Set the y translation to 0 to prevent panning that dimension
       d3.event.translate[1] = 0
-      @graph.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")")
+      console.log d3.event.translate
+      @graph.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ", 1)")
+
+    move_to: (x, node) ->
+      @zoom.translate([x, 0])
+      # attr("transform", "translate(#{xpos})")
+      @zoom.event(node)
+      
+    resize: (width, height) ->
+      @graph.attr("transform", "translate(#{width}, #{height})")
+
+    getDataRange: (data) ->
+      return [d3.min(data, (d) -> return new Date(d.startdate) ),
+              d3.max(data, (d) -> return new Date(d.enddate) )]
+
+    getCurrentTimeRange: (back = 7, forward = 7) ->
+      # days back and forward
+      backtime = new Date
+      forwardtime = new Date
+      backtime.setDate(backtime.getDate()-back)
+      forwardtime.setDate(forwardtime.getDate()+forward)
+      return [backtime, forwardtime]
 
     draw: (data) ->
       self = @
       @lastdata = data
       width = @options.width - @options.margin.left - @options.margin.right
       height = @options.height - @options.margin.top - @options.margin.bottom
-      now = new Date
-      rangex = [d3.min(data, (d) -> return new Date(d.startdate) ),
-                d3.max(data, (d) -> return new Date(d.enddate) )]
+      rangex = @getCurrentTimeRange()
       @createAxis(width, height, rangex)
-      zoom = d3.behavior.zoom()
+      @zoom = d3.behavior.zoom()
         .x(@x)
-        .scaleExtent([1, 10])
+        .scaleExtent([0, 10])
         .on("zoom", () -> self.zoomed());
       @svg = d3.select(self.target)
         .append("svg")      
           .attr("width", width)
           .attr("height", height)
-          .call(zoom)
+          .style("background-color", "lightgray")
+          .call(@zoom)
       @svg.append("g")
           .attr("transform", "translate(" + 0 + "," + 0 + ")")
       @svg.append("g")
@@ -68,8 +88,15 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
       @graph = @svg.append("g")
       @graph
         .attr("class", "chart")
+      @drawBlocks(data)
+
+    drawBlocks: (data) ->
+      self = @
+      now = new Date
+      height = @options.height - @options.margin.top - @options.margin.bottom
 
       blocks = []
+      ylane = 0
       ypos = 10
       for item in data
         x1 = @x(item.startdate)
@@ -93,36 +120,44 @@ define ['jquery','d3', 'js/utils'], ($, d3, utils) ->
         .attr("stroke", "red")
 
       # Add roadmap items
-      nodes = @graph.selectAll("rect")
+      @nodes = @graph.selectAll("rect")
         .data(blocks)
           .enter().append("g")
             .attr("class", "node")
             .attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")" )
-      nodes.append("title")
+      @nodes.append("title")
         .text( (d) -> return d.name )
-      nodes.append("rect")
+      @nodes.append("rect")
         .attr("width", (d) -> return d.width )
         .attr("height", (d) -> return d.height )
-      nodes.append("circle")
-        .attr("cy", "5" )
-        .attr("r", "8" )
-        .attr("fill", "#003366" )
-      nodes.append("circle")
-        .attr("cy", "5" )
-        .attr("cx", (d) -> d.width )
-        .attr("r", "10" )
-        .attr("stroke", "blue" )
-        .attr("fill", "#003366" )
-        #.attr("rx", "10")
-      nodes.append("text")
+      # nodes.append("circle")
+      #   .attr("cy", "5" )
+      #   .attr("r", "8" )
+      #   .attr("fill", "#003366" )
+      # nodes.append("circle")
+      #   .attr("cy", "5" )
+      #   .attr("cx", (d) -> d.width )
+      #   .attr("r", "10" )
+      #   .attr("stroke", "blue" )
+      #   .attr("fill", "#003366" )
+      #.attr("rx", "10")
+      @nodes.append("text")
         #.attr("x", (d) -> return d.width/2 )
         .attr("dy", "2.2em" )
         .style("text-anchor", "start")
         .text( (d) -> return d.name )
         .attr("fill", "black")
 
-      nodes.on("click", (d) -> 
-        $(self).trigger "select", d
+      @nodes.on("mouseover", (d, i) ->
+        d3.select(this).select('rect').classed("highlight", true)
       )
+      @nodes.on("mouseout", (d, i) ->
+        d3.select(this).select('rect').classed("highlight", false)
+      )
+      @nodes.on("click", (d, i) ->
+        node = self.nodes[0][i]
+        $(self).trigger "select", {data: d, node: node}
+      )
+      return
 
   return RoadmapD3

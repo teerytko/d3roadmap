@@ -1,4 +1,9 @@
+
 .chart rect {
+  fill: steelblue;
+}
+
+rect.highlight {
   fill: #0099FF;
 }
 

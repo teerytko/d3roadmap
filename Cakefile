@@ -15,6 +15,7 @@ task 'start', 'start the server', (options) ->
   process.env.SETTINGS_NAME = options.settings if options.settings
   console.log "Test run #{nodeDev}"
   spawn nodeDev, ['server.coffee'], stdio: 'inherit'
+  invoke 'watch'
 
 option '-t', '--testfile [FILENAME]', 'set the filename for `test`'
 task 'test', 'run the tests', (options) ->
