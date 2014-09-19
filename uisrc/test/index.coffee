@@ -1,4 +1,4 @@
-require ['jquery', 'bootstrap', 'bseditable', 'js/roadmap'],
+require ['jquery', 'bootstrap', 'd3', 'js/roadmap'],
 ($, bootstrap, bseditable,  Roadmap) ->
 
   $(document).ready ->
@@ -6,7 +6,7 @@ require ['jquery', 'bootstrap', 'bseditable', 'js/roadmap'],
 
   elem = $('#example-roadmap')
 
-  roadmap = new Roadmap('#example-roadmap', {
+  roadmap = new RoadmapD3('#example-roadmap', {
     width: elem.width()
   })
 
