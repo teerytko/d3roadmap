@@ -12,7 +12,7 @@
     data = [
       {
         name: "Test FOOBAR PO",
-        group: "Moorefield",
+        group: "Foobar",
         startdate: new Date(2014, 7, 1),
         enddate: new Date(2014, 7, 7)
       }, {
@@ -46,7 +46,7 @@
         startdate: new Date(2014, 9, 11),
         enddate: new Date(2014, 10, 18)
       }, {
-        group: "Broxton",
+        group: "Barfoo",
         name: "Product I",
         startdate: new Date(2014, 9, 11),
         enddate: new Date(2014, 10, 18)
