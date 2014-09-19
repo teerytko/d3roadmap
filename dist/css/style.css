@@ -1,0 +1,42 @@
+
+.chart rect.block {
+  fill: #5C85FF;
+}
+.chart rect.block.highlight {
+  fill: #0099FF;
+}
+.chart text.block {
+  fill: white;
+}
+
+
+rect.group.even {
+  fill: #B4B49B;
+}
+rect.group.odd {
+  fill: #E8E8E1;
+}
+
+text.group {
+  fill: #666633;
+}
+
+/*.chart text {
+  font: 12px sans-serif;
+  text-anchor: end;
+}
+*/
+.axis text {
+  font: 10px sans-serif;
+  fill: black;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.axis .minor line {
+  stroke: #777;
+}
