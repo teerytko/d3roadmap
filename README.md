@@ -1,5 +1,6 @@
-
-D3Roadmap is a js utility for creating roadmaps ui.
+d3roadmap
+=========
+A javascript component for roadmap visualisations. Using d3 library and svg.
 
 ## Table of contents
 
@@ -13,11 +14,11 @@ D3Roadmap is a js utility for creating roadmaps ui.
 
 ## Quick start
 
- git clone <>
+ git clone https://github.com/teerytko/d3roadmap
  npm install .
  bower install .
 
- # Run test server
+ # Run test server (starts also the watch for building coffeescript files)
  cake start
 
  # Build UI code to dist folder
@@ -36,7 +37,7 @@ D3Roadmap is a js utility for creating roadmaps ui.
 
 **Teemu Rytkönen**
 
-- <http://github.com/terytkon>
+- <http://github.com/teerytko>
 
 
 ## Copyright and license
