@@ -18,8 +18,8 @@
       }, {
         name: "Product B",
         group: "AAA",
-        startdate: new Date(2014, 9, 11),
-        enddate: new Date(2014, 9, 18)
+        startdate: "2014-9-11",
+        enddate: "2014-9-18"
       }, {
         name: "Product C",
         group: "AAA",

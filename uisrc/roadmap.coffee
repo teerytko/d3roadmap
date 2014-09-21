@@ -70,9 +70,17 @@ class @RoadmapD3
       grouppos++
     return groupdicts
 
+  validate_data: (data) ->
+    @lastdata = data
+    for item in data
+      if typeof item.startdate == 'string'
+        item.startdate = new Date(item.startdate)
+      if typeof item.enddate == 'string'
+        item.enddate = new Date(item.enddate)
+
   draw: (data) ->
     self = @
-    @lastdata = data
+    @validate_data(data)
     # limit the max number of groups?
     @width = @options.width
     @height = @options.height

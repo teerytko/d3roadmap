@@ -117,10 +117,28 @@
       return groupdicts;
     };
 
+    RoadmapD3.prototype.validate_data = function(data) {
+      var item, _i, _len, _results;
+      this.lastdata = data;
+      _results = [];
+      for (_i = 0, _len = data.length; _i < _len; _i++) {
+        item = data[_i];
+        if (typeof item.startdate === 'string') {
+          item.startdate = new Date(item.startdate);
+        }
+        if (typeof item.enddate === 'string') {
+          _results.push(item.enddate = new Date(item.enddate));
+        } else {
+          _results.push(void 0);
+        }
+      }
+      return _results;
+    };
+
     RoadmapD3.prototype.draw = function(data) {
       var self;
       self = this;
-      this.lastdata = data;
+      this.validate_data(data);
       this.width = this.options.width;
       this.height = this.options.height;
       this.rangex = this.get_current_time_range();
