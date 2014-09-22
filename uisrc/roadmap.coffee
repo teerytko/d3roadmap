@@ -4,6 +4,8 @@ defaults = {
   height: 400,
   margin: {top: 20, right: 30, bottom: 30, left: 40},
   lineheight: 20,
+  range_back: 7,
+  range_forward: 21,
 }
 extend = (destination, source) ->
   for property in Object.keys(source)
@@ -138,8 +140,8 @@ class @RoadmapD3
         .tickSize(@height-@options.margin.bottom)
         .tickFormat(formatWeek)
 
-    rangex[0] = rangex[0].setDate(rangex[0].getDate()-7)
-    rangex[1] = rangex[1].setDate(rangex[1].getDate()+7)
+    rangex[0] = rangex[0].setDate(rangex[0].getDate()-@options.range_back)
+    rangex[1] = rangex[1].setDate(rangex[1].getDate()+@options.range_forward)
     @x.domain(rangex)
 
   draw_groups: (groups) ->

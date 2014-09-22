@@ -12,7 +12,9 @@
       bottom: 30,
       left: 40
     },
-    lineheight: 20
+    lineheight: 20,
+    range_back: 7,
+    range_forward: 21
   };
 
   extend = function(destination, source) {
@@ -178,8 +180,8 @@
         return "Week " + (format(d));
       };
       this.xAxis = d3.svg.axis().scale(this.x).orient("bottom").tickSize(this.height - this.options.margin.bottom).tickFormat(formatWeek);
-      rangex[0] = rangex[0].setDate(rangex[0].getDate() - 7);
-      rangex[1] = rangex[1].setDate(rangex[1].getDate() + 7);
+      rangex[0] = rangex[0].setDate(rangex[0].getDate() - this.options.range_back);
+      rangex[1] = rangex[1].setDate(rangex[1].getDate() + this.options.range_forward);
       return this.x.domain(rangex);
     };
 
