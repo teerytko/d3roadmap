@@ -73,10 +73,23 @@ class @RoadmapD3
   validate_data: (data) ->
     @lastdata = data
     for item in data
+      # convert string mode dates to Date objects
       if typeof item.startdate == 'string'
         item.startdate = new Date(item.startdate)
       if typeof item.enddate == 'string'
         item.enddate = new Date(item.enddate)
+      if not item.startdate?
+        console.log "Item '#{item.name}' has no startdate!"
+      if not item.enddate?
+        console.log "Item '#{item.name}' has no enddate!"
+        # create a default enddate
+        item.enddate = new Date(item.startdate)
+        item.enddate.setDate(item.enddate.getDate()+7)
+      else if item.enddate < item.startdate
+        console.log "Item '#{item.name}' enddate < startdate!"
+        # create a default enddate
+        item.enddate = new Date(item.startdate)
+        item.enddate.setDate(item.enddate.getDate()+7)
 
   draw: (data) ->
     self = @

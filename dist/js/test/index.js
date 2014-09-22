@@ -24,11 +24,11 @@
         name: "Product C",
         group: "AAA",
         startdate: new Date(2014, 9, 11),
-        enddate: new Date(2014, 9, 18)
+        enddate: null
       }, {
         name: "Product D",
         startdate: new Date(2014, 9, 11),
-        enddate: new Date(2014, 9, 18)
+        enddate: new Date(2014, 9, 10)
       }, {
         name: "Product E",
         startdate: new Date(2014, 9, 11),

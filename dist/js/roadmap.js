@@ -127,7 +127,19 @@
           item.startdate = new Date(item.startdate);
         }
         if (typeof item.enddate === 'string') {
-          _results.push(item.enddate = new Date(item.enddate));
+          item.enddate = new Date(item.enddate);
+        }
+        if (item.startdate == null) {
+          console.log("Item '" + item.name + "' has no startdate!");
+        }
+        if (item.enddate == null) {
+          console.log("Item '" + item.name + "' has no enddate!");
+          item.enddate = new Date(item.startdate);
+          _results.push(item.enddate.setDate(item.enddate.getDate() + 7));
+        } else if (item.enddate < item.startdate) {
+          console.log("Item '" + item.name + "' enddate < startdate!");
+          item.enddate = new Date(item.startdate);
+          _results.push(item.enddate.setDate(item.enddate.getDate() + 7));
         } else {
           _results.push(void 0);
         }
