@@ -2,10 +2,13 @@
 defaults = {
   width: 480,
   height: 400,
+  miniheight: 100,
+  minirangeleft: 56,
+  minirangeright: 360,
   margin: {top: 20, right: 30, bottom: 30, left: 40},
   lineheight: 20,
-  range_back: 7,
-  range_forward: 21,
+  range_back: 14,
+  range_forward: 28,
 }
 extend = (destination, source) ->
   for property in Object.keys(source)
@@ -30,6 +33,21 @@ class @RoadmapD3
     d3.event.translate[1] = 0
     console.log d3.event.translate
     @graph.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ", 1)")
+    mrange = @get_main_range()
+    x1 = @miniXaxis.scale()(mrange[0])
+    x2 = @miniXaxis.scale()(mrange[1])
+    @minisvg.select(".glasswindow")
+      .attr("x", x1)
+      .attr("width", x2-x1)
+
+
+  get_main_range: () ->
+    scale = @xAxis.scale()
+    mainrange = []
+    mainrange.push scale.invert(scale.range()[0])
+    mainrange.push scale.invert(scale.range()[1])
+    console.log "timerange #{mainrange}"
+    return mainrange
 
   move_to: (x, node) ->
     scale = @zoom.scale()
@@ -44,7 +62,7 @@ class @RoadmapD3
     return [d3.min(data, (d) -> return new Date(d.startdate) ),
             d3.max(data, (d) -> return new Date(d.enddate) )]
 
-  get_current_time_range: (back = 7, forward = 7) ->
+  get_time_range: (back = 7, forward = 7) ->
     # days back and forward
     backtime = new Date
     forwardtime = new Date
@@ -93,18 +111,34 @@ class @RoadmapD3
         item.enddate = new Date(item.startdate)
         item.enddate.setDate(item.enddate.getDate()+7)
 
+  create_axis: (rangex, height, width, format = null) ->
+    x = d3.time.scale()
+        .range([0, width])
+    formatWeek = (d) ->
+      if not format?
+        format = d3.time.format("%U.%w")
+      return "Week #{format(d)}"
+    axis = d3.svg.axis()
+        .scale(x)
+        .tickSize(height)
+        .tickFormat(formatWeek)
+
+    x.domain(rangex)
+    return axis
+
   draw: (data) ->
     self = @
     @validate_data(data)
-    # limit the max number of groups?
     @width = @options.width
     @height = @options.height
-    @rangex = @get_current_time_range()
+    # limit the max number of groups?
+    @rangex = @get_time_range(@options.range_back, @options.range_forward)
+    @xAxis = @create_axis(@rangex, @height-@options.margin.bottom, @width)
     @groups = @get_groups(data)
-    console.log @groups
-    @create_axis(@rangex)
+    @draw_mini(data)
+
     @zoom = d3.behavior.zoom()
-      .x(@x)
+      .x(@xAxis.scale())
       .scaleExtent([0, 10])
       .on("zoom", () -> self.zoomed());
     
@@ -120,29 +154,13 @@ class @RoadmapD3
     @svg.append("g")
       .attr("class", "x axis")
       .attr("stroke-dasharray", "2,2")
-      .call(@xAxis);
+      .call(@xAxis)
     @graph.append("g")
         .attr("transform", "translate(" + 0 + "," + 0 + ")")
     @graph
       .attr("class", "chart")
 
     @draw_blocks(data)
-
-  create_axis: (rangex) ->
-    @x = d3.time.scale()
-        .range([0, @width])
-    formatWeek = (d) ->
-      format = d3.time.format("%U.%w")
-      return "Week #{format(d)}"
-    @xAxis = d3.svg.axis()
-        .scale(@x)
-        .orient("bottom")
-        .tickSize(@height-@options.margin.bottom)
-        .tickFormat(formatWeek)
-
-    rangex[0] = rangex[0].setDate(rangex[0].getDate()-@options.range_back)
-    rangex[1] = rangex[1].setDate(rangex[1].getDate()+@options.range_forward)
-    @x.domain(rangex)
 
   draw_groups: (groups) ->
     groupnodes = @svg.selectAll("g").data(groups)
@@ -168,13 +186,14 @@ class @RoadmapD3
   draw_blocks: (data) ->
     self = @
     now = new Date
-    
+    xscale = @xAxis.scale()
+
     blocks = []
     ylane = 0
     for item in data
       # count the positions of the block
-      x1 = @x(item.startdate)
-      x2 = @x(item.enddate)
+      x1 = xscale(item.startdate)
+      x2 = xscale(item.enddate)
       ypos = @get_group(item.group).ypos
       # check possible overlapping blocks
       # and count the offset pos the current block should have
@@ -198,7 +217,7 @@ class @RoadmapD3
       }
       blocks.push block
       # Add line for now
-    nowx = @x(now)
+    nowx = xscale(now)
     @graph.append("line")
       .attr("x1", nowx)
       .attr("y1", 0)
@@ -219,17 +238,6 @@ class @RoadmapD3
       .attr("width", (d) -> return d.width )
       .attr("height", (d) -> return d.height )
       .attr("rx", "10" )
-    # nodes.append("circle")
-    #   .attr("cy", "5" )
-    #   .attr("r", "8" )
-    #   .attr("fill", "#003366" )
-    # nodes.append("circle")
-    #   .attr("cy", "5" )
-    #   .attr("cx", (d) -> d.width )
-    #   .attr("r", "10" )
-    #   .attr("stroke", "blue" )
-    #   .attr("fill", "#003366" )
-    #.attr("rx", "10")
     @nodes.append("text")
       #.attr("x", (d) -> return d.width/2 )
       .attr("class", "block")
@@ -249,3 +257,40 @@ class @RoadmapD3
       $(self).trigger "select", {data: d, node: node}
     )  
     return
+
+  draw_mini: (data) ->
+    self = @
+    @minisvg = d3.select(@target)
+      .append("svg")
+        .attr("width", @width)
+        .attr("height", @options.miniheight)
+        .attr("class", "miniview")
+    rangex = @get_time_range(@options.minirangeleft, @options.minirangeright)
+
+    @miniXaxis = @create_axis(rangex, @options.miniheight-20, @width, d3.time.format("%U"))
+    @minisvg.append("g")
+      .attr("class", "x axis")
+      .attr("stroke-dasharray", "2,2")
+      .call(@miniXaxis);
+
+    mrange = @get_main_range()
+    x1 = @miniXaxis.scale()(mrange[0])
+    x2 = @miniXaxis.scale()(mrange[1])
+    @minisvg.append("g")
+      .append("rect")
+        .attr("class", "glasswindow")
+        .attr("fill-opacity", "0.4")
+        .attr("x", x1)
+        .attr("width", x2-x1)
+        .attr("height", @options.miniheight)
+
+    @minisvg.on("click", (d, i) ->
+      xpos = d3.mouse(this)[0]
+      xtime = self.miniXaxis.scale().invert(xpos)
+      mainx = self.xAxis.scale()(xtime)
+      zscale = self.zoom.scale()
+      mainleft = self.zoom.translate()[0]
+      newx = (mainleft - mainx) / zscale
+      console.log "#{xpos}, #{zscale}, #{mainleft} #{mainx} #{newx}"
+      self.move_to(newx, d3.select(".glasswindow"))
+    )

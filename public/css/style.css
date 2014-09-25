@@ -20,6 +20,9 @@ rect.group.odd {
 text.group {
   fill: #666633;
 }
+.miniview {
+  background-color: #E8E8E1;
+}
 
 /*.chart text {
   font: 12px sans-serif;

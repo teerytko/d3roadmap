@@ -6,6 +6,9 @@
   defaults = {
     width: 480,
     height: 400,
+    miniheight: 100,
+    minirangeleft: 56,
+    minirangeright: 360,
     margin: {
       top: 20,
       right: 30,
@@ -13,8 +16,8 @@
       left: 40
     },
     lineheight: 20,
-    range_back: 7,
-    range_forward: 21
+    range_back: 14,
+    range_forward: 28
   };
 
   extend = function(destination, source) {
@@ -50,10 +53,25 @@
     };
 
     RoadmapD3.prototype.zoomed = function() {
+      var mrange, x1, x2;
       this.svg.select(".x.axis").call(this.xAxis);
       d3.event.translate[1] = 0;
       console.log(d3.event.translate);
-      return this.graph.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ", 1)");
+      this.graph.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ", 1)");
+      mrange = this.get_main_range();
+      x1 = this.miniXaxis.scale()(mrange[0]);
+      x2 = this.miniXaxis.scale()(mrange[1]);
+      return this.minisvg.select(".glasswindow").attr("x", x1).attr("width", x2 - x1);
+    };
+
+    RoadmapD3.prototype.get_main_range = function() {
+      var mainrange, scale;
+      scale = this.xAxis.scale();
+      mainrange = [];
+      mainrange.push(scale.invert(scale.range()[0]));
+      mainrange.push(scale.invert(scale.range()[1]));
+      console.log("timerange " + mainrange);
+      return mainrange;
     };
 
     RoadmapD3.prototype.move_to = function(x, node) {
@@ -77,7 +95,7 @@
       ];
     };
 
-    RoadmapD3.prototype.get_current_time_range = function(back, forward) {
+    RoadmapD3.prototype.get_time_range = function(back, forward) {
       var backtime, forwardtime;
       if (back == null) {
         back = 7;
@@ -149,17 +167,34 @@
       return _results;
     };
 
+    RoadmapD3.prototype.create_axis = function(rangex, height, width, format) {
+      var axis, formatWeek, x;
+      if (format == null) {
+        format = null;
+      }
+      x = d3.time.scale().range([0, width]);
+      formatWeek = function(d) {
+        if (format == null) {
+          format = d3.time.format("%U.%w");
+        }
+        return "Week " + (format(d));
+      };
+      axis = d3.svg.axis().scale(x).tickSize(height).tickFormat(formatWeek);
+      x.domain(rangex);
+      return axis;
+    };
+
     RoadmapD3.prototype.draw = function(data) {
       var self;
       self = this;
       this.validate_data(data);
       this.width = this.options.width;
       this.height = this.options.height;
-      this.rangex = this.get_current_time_range();
+      this.rangex = this.get_time_range(this.options.range_back, this.options.range_forward);
+      this.xAxis = this.create_axis(this.rangex, this.height - this.options.margin.bottom, this.width);
       this.groups = this.get_groups(data);
-      console.log(this.groups);
-      this.create_axis(this.rangex);
-      this.zoom = d3.behavior.zoom().x(this.x).scaleExtent([0, 10]).on("zoom", function() {
+      this.draw_mini(data);
+      this.zoom = d3.behavior.zoom().x(this.xAxis.scale()).scaleExtent([0, 10]).on("zoom", function() {
         return self.zoomed();
       });
       this.svg = d3.select(self.target).append("svg").attr("width", this.width).attr("height", this.height).call(this.zoom);
@@ -169,20 +204,6 @@
       this.graph.append("g").attr("transform", "translate(" + 0 + "," + 0 + ")");
       this.graph.attr("class", "chart");
       return this.draw_blocks(data);
-    };
-
-    RoadmapD3.prototype.create_axis = function(rangex) {
-      var formatWeek;
-      this.x = d3.time.scale().range([0, this.width]);
-      formatWeek = function(d) {
-        var format;
-        format = d3.time.format("%U.%w");
-        return "Week " + (format(d));
-      };
-      this.xAxis = d3.svg.axis().scale(this.x).orient("bottom").tickSize(this.height - this.options.margin.bottom).tickFormat(formatWeek);
-      rangex[0] = rangex[0].setDate(rangex[0].getDate() - this.options.range_back);
-      rangex[1] = rangex[1].setDate(rangex[1].getDate() + this.options.range_forward);
-      return this.x.domain(rangex);
     };
 
     RoadmapD3.prototype.draw_groups = function(groups) {
@@ -217,15 +238,16 @@
     };
 
     RoadmapD3.prototype.draw_blocks = function(data) {
-      var block, blocks, bpos, item, now, nowx, self, x1, x2, ylane, yoffset, ypos, _i, _j, _len, _len1;
+      var block, blocks, bpos, item, now, nowx, self, x1, x2, xscale, ylane, yoffset, ypos, _i, _j, _len, _len1;
       self = this;
       now = new Date;
+      xscale = this.xAxis.scale();
       blocks = [];
       ylane = 0;
       for (_i = 0, _len = data.length; _i < _len; _i++) {
         item = data[_i];
-        x1 = this.x(item.startdate);
-        x2 = this.x(item.enddate);
+        x1 = xscale(item.startdate);
+        x2 = xscale(item.enddate);
         ypos = this.get_group(item.group).ypos;
         bpos = 0;
         for (_j = 0, _len1 = blocks.length; _j < _len1; _j++) {
@@ -248,7 +270,7 @@
         };
         blocks.push(block);
       }
-      nowx = this.x(now);
+      nowx = xscale(now);
       this.graph.append("line").attr("x1", nowx).attr("y1", 0).attr("x2", nowx).attr("y2", this.height - this.options.margin.bottom).attr("stroke", "red");
       this.nodes = this.graph.selectAll("rect").data(blocks).enter().append("g").attr("class", "node").attr("transform", function(d) {
         return "translate(" + d.x + "," + d.y + ")";
@@ -277,6 +299,30 @@
           data: d,
           node: node
         });
+      });
+    };
+
+    RoadmapD3.prototype.draw_mini = function(data) {
+      var mrange, rangex, self, x1, x2;
+      self = this;
+      this.minisvg = d3.select(this.target).append("svg").attr("width", this.width).attr("height", this.options.miniheight).attr("class", "miniview");
+      rangex = this.get_time_range(this.options.minirangeleft, this.options.minirangeright);
+      this.miniXaxis = this.create_axis(rangex, this.options.miniheight - 20, this.width, d3.time.format("%U"));
+      this.minisvg.append("g").attr("class", "x axis").attr("stroke-dasharray", "2,2").call(this.miniXaxis);
+      mrange = this.get_main_range();
+      x1 = this.miniXaxis.scale()(mrange[0]);
+      x2 = this.miniXaxis.scale()(mrange[1]);
+      this.minisvg.append("g").append("rect").attr("class", "glasswindow").attr("fill-opacity", "0.4").attr("x", x1).attr("width", x2 - x1).attr("height", this.options.miniheight);
+      return this.minisvg.on("click", function(d, i) {
+        var mainleft, mainx, newx, xpos, xtime, zscale;
+        xpos = d3.mouse(this)[0];
+        xtime = self.miniXaxis.scale().invert(xpos);
+        mainx = self.xAxis.scale()(xtime);
+        zscale = self.zoom.scale();
+        mainleft = self.zoom.translate()[0];
+        newx = (mainleft - mainx) / zscale;
+        console.log("" + xpos + ", " + zscale + ", " + mainleft + " " + mainx + " " + newx);
+        return self.move_to(newx, d3.select(".glasswindow"));
       });
     };
 
