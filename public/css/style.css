@@ -7,8 +7,8 @@
 }
 .chart text.block {
   fill: white;
+  text-anchor: start;
 }
-
 
 rect.group.even {
   fill: #B4B49B;
@@ -23,12 +23,16 @@ text.group {
 .miniview {
   background-color: #E8E8E1;
 }
-
-/*.chart text {
-  font: 12px sans-serif;
-  text-anchor: end;
+.miniview rect.block {
+  fill: #5C85FF;
 }
-*/
+
+.miniview text {
+  fill: black;
+  dx: 0px;
+  font: 8px sans-serif;
+}
+
 .axis text {
   font: 10px sans-serif;
   fill: black;

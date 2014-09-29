@@ -151,23 +151,39 @@ class @RoadmapD3
     @draw_groups(@groups)
 
     @graph = @svg.append("g")
+      .attr("class", "chart")
+    @graph.append("g")
+        .attr("transform", "translate(" + 0 + "," + 0 + ")")
+
+    xscale = @xAxis.scale()
+    # Add line for now
+    now = new Date
+    nowx = xscale(now)
+    @graph.append("line")
+      .attr("x1", nowx)
+      .attr("y1", 0)
+      .attr("x2", nowx)
+      .attr("y2", @height-@options.margin.bottom)
+      .attr("stroke", "red")
+
+    blocks = @count_blocks(data, xscale, @height-@options.margin.bottom, @options.lineheight)
+    nodes = @draw_blocks(@graph, blocks)
+    @add_node_events(nodes)
+
     @svg.append("g")
       .attr("class", "x axis")
       .attr("stroke-dasharray", "2,2")
       .call(@xAxis)
-    @graph.append("g")
-        .attr("transform", "translate(" + 0 + "," + 0 + ")")
-    @graph
-      .attr("class", "chart")
-
-    @draw_blocks(data)
 
   draw_groups: (groups) ->
-    groupnodes = @svg.selectAll("g").data(groups)
-      .enter().append("g")
-        .attr("transform", (d) -> "translate(" + 0 + "," + d.ypos + ")" )
+    groupnodes = @svg.selectAll("g.group")
+      .data(groups)
+        .enter().append("g")
+          .attr("class", "group")
+          .attr("transform", (d) -> "translate(" + 0 + "," + d.ypos + ")" )
     groupnodes.append("rect")
       .attr("class", (d) -> if d.index % 2 == 0 then "group even" else "group odd")
+      .attr("fill-opacity", "0.4")
       .attr("width", @width)
       .attr("height", (d) -> d.height)
     groupnodes.append("text")
@@ -183,77 +199,100 @@ class @RoadmapD3
         return group
     return null
 
-  draw_blocks: (data) ->
-    self = @
-    now = new Date
-    xscale = @xAxis.scale()
-
+  count_blocks: (data, xscale, height, lineheight) ->
     blocks = []
-    ylane = 0
+    # count the positions of the blocks
     for item in data
-      # count the positions of the block
       x1 = xscale(item.startdate)
       x2 = xscale(item.enddate)
       ypos = @get_group(item.group).ypos
-      # check possible overlapping blocks
-      # and count the offset pos the current block should have
       bpos = 0
-      for block in blocks
-        if block.item.group == item.group
-          # check if the current item is overlapping
-          if block.item.startdate <= item.startdate and item.startdate <= block.item.enddate or
-          block.item.startdate <= item.enddate and item.enddate <= block.item.enddate
-            bpos++
-
-      yoffset = (@options.lineheight+10)*bpos
       block = {
         name: item.name,
         x: x1, 
-        y: ypos+yoffset,
+        y: ypos,
         index: bpos,
-        height: @options.lineheight, 
+        height: lineheight, 
         width: x2-x1
         item: item
       }
       blocks.push block
-      # Add line for now
-    nowx = xscale(now)
-    @graph.append("line")
-      .attr("x1", nowx)
-      .attr("y1", 0)
-      .attr("x2", nowx)
-      .attr("y2", @height-@options.margin.bottom)
-      .attr("stroke", "red")
+    return blocks
 
-    # Add roadmap items
-    @nodes = @graph.selectAll("rect")
+  count_mini_blocks: (data, xscale, height, lineheight) ->
+    blocks = []
+    # count the positions of the blocks
+    for item in data
+      x1 = xscale(item.startdate)
+      x2 = xscale(item.enddate)
+      ypos = 10
+      bpos = 0
+      block = {
+        name: item.name,
+        x: x1, 
+        y: ypos,
+        index: bpos,
+        height: lineheight, 
+        width: x2-x1
+        item: item
+      }
+      blocks.push block
+    return blocks
+
+  draw_blocks: (graph, blocks) ->
+    self = @
+    
+    #@blocks = blocks
+
+    # Add roadmap items (blocks)
+    nodes = graph.selectAll("rect")
       .data(blocks)
         .enter().append("g")
           .attr("class", "node")
-          .attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")" )
-    @nodes.append("title")
+          .attr("transform", (d) -> "translate(" + d.x + "," + d.y + ")" )
+    nodes.append("title")
       .text( (d) -> return d.name )
-    @nodes.append("rect")
+    nodes.append("rect")
       .attr("class", "block")
       .attr("width", (d) -> return d.width )
       .attr("height", (d) -> return d.height )
       .attr("rx", "10" )
-    @nodes.append("text")
+    nodes.append("text")
       #.attr("x", (d) -> return d.width/2 )
       .attr("class", "block")
       .attr("dx", "1em" )
       .attr("dy", "1em" )
-      .style("text-anchor", "start")
       .text( (d) -> return d.name )
+    mynodes = nodes
+    nodes.each (d, index) ->
+      current = mynodes[0][index]
+      curbox = current.getBBox()
+      x1 = current.__data__.x
+      x2 = current.__data__.x + curbox.width
+      # Check overlapping
+      for i in [0..index]
+        node = mynodes[0][i]
+        nodebox = node.getBBox()
+        if i != index
+          if node.__data__.x <= x1 and x1 <= node.__data__.x+nodebox.width \
+          or node.__data__.x <= x2 and x2 <= node.__data__.x+nodebox.width
+            current.__data__.y += nodebox.height
+      d3.select(current).attr("transform", (d) -> "translate(" + d.x + "," + (d.y) + ")" )
+      return
 
-    @nodes.on("mouseover", (d, i) ->
+
+    return nodes
+
+  add_node_events: (nodes) ->
+    self = this
+    nodes.on("mouseover", (d, i) ->
       d3.select(this).select('rect').classed("highlight", true)
     )
-    @nodes.on("mouseout", (d, i) ->
+    nodes.on("mouseout", (d, i) ->
       d3.select(this).select('rect').classed("highlight", false)
     )
-    @nodes.on("click", (d, i) ->
-      node = self.nodes[0][i]
+    nodes.on("click", (d, i) ->
+      node = nodes[0][i]
       $(self).trigger "select", {data: d, node: node}
     )  
     return
@@ -276,15 +315,21 @@ class @RoadmapD3
     mrange = @get_main_range()
     x1 = @miniXaxis.scale()(mrange[0])
     x2 = @miniXaxis.scale()(mrange[1])
-    @minisvg.append("g")
+    viewdrag = d3.behavior.drag()
+    view = @minisvg.append("g")
       .append("rect")
         .attr("class", "glasswindow")
         .attr("fill-opacity", "0.4")
         .attr("x", x1)
         .attr("width", x2-x1)
         .attr("height", @options.miniheight)
+        .call(viewdrag)
 
-    @minisvg.on("click", (d, i) ->
+    graph = @minisvg.append("g")
+    xscale = @miniXaxis.scale()
+    blocks = @count_mini_blocks(data, xscale, @options.miniheight-@options.margin.bottom, 3)
+    nodes = @draw_blocks(graph, blocks)
+    move_window = () ->
       xpos = d3.mouse(this)[0]
       xtime = self.miniXaxis.scale().invert(xpos)
       mainx = self.xAxis.scale()(xtime)
@@ -293,4 +338,10 @@ class @RoadmapD3
       newx = (mainleft - mainx) / zscale
       console.log "#{xpos}, #{zscale}, #{mainleft} #{mainx} #{newx}"
       self.move_to(newx, d3.select(".glasswindow"))
-    )
+
+
+    # mouse event handlers
+    viewdrag.on "drag", (d) -> move_window()
+    @minisvg.on("click", (d, i) -> move_window()
+
+

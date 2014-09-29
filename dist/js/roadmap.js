@@ -185,7 +185,7 @@
     };
 
     RoadmapD3.prototype.draw = function(data) {
-      var self;
+      var blocks, nodes, now, nowx, self, xscale;
       self = this;
       this.validate_data(data);
       this.width = this.options.width;
@@ -199,16 +199,21 @@
       });
       this.svg = d3.select(self.target).append("svg").attr("width", this.width).attr("height", this.height).call(this.zoom);
       this.draw_groups(this.groups);
-      this.graph = this.svg.append("g");
-      this.svg.append("g").attr("class", "x axis").attr("stroke-dasharray", "2,2").call(this.xAxis);
+      this.graph = this.svg.append("g").attr("class", "chart");
       this.graph.append("g").attr("transform", "translate(" + 0 + "," + 0 + ")");
-      this.graph.attr("class", "chart");
-      return this.draw_blocks(data);
+      xscale = this.xAxis.scale();
+      now = new Date;
+      nowx = xscale(now);
+      this.graph.append("line").attr("x1", nowx).attr("y1", 0).attr("x2", nowx).attr("y2", this.height - this.options.margin.bottom).attr("stroke", "red");
+      blocks = this.count_blocks(data, xscale, this.height - this.options.margin.bottom, this.options.lineheight);
+      nodes = this.draw_blocks(this.graph, blocks);
+      this.add_node_events(nodes);
+      return this.svg.append("g").attr("class", "x axis").attr("stroke-dasharray", "2,2").call(this.xAxis);
     };
 
     RoadmapD3.prototype.draw_groups = function(groups) {
       var groupnodes;
-      groupnodes = this.svg.selectAll("g").data(groups).enter().append("g").attr("transform", function(d) {
+      groupnodes = this.svg.selectAll("g.group").data(groups).enter().append("g").attr("class", "group").attr("transform", function(d) {
         return "translate(" + 0 + "," + d.ypos + ")";
       });
       groupnodes.append("rect").attr("class", function(d) {
@@ -217,7 +222,7 @@
         } else {
           return "group odd";
         }
-      }).attr("width", this.width).attr("height", function(d) {
+      }).attr("fill-opacity", "0.4").attr("width", this.width).attr("height", function(d) {
         return d.height;
       });
       return groupnodes.append("text").attr("class", "group").attr("dy", "1em").attr("dx", "1em").attr("font-size", "2em").text(function(d) {
@@ -237,64 +242,104 @@
       return null;
     };
 
-    RoadmapD3.prototype.draw_blocks = function(data) {
-      var block, blocks, bpos, item, now, nowx, self, x1, x2, xscale, ylane, yoffset, ypos, _i, _j, _len, _len1;
-      self = this;
-      now = new Date;
-      xscale = this.xAxis.scale();
+    RoadmapD3.prototype.count_blocks = function(data, xscale, height, lineheight) {
+      var block, blocks, bpos, item, x1, x2, ypos, _i, _len;
       blocks = [];
-      ylane = 0;
       for (_i = 0, _len = data.length; _i < _len; _i++) {
         item = data[_i];
         x1 = xscale(item.startdate);
         x2 = xscale(item.enddate);
         ypos = this.get_group(item.group).ypos;
         bpos = 0;
-        for (_j = 0, _len1 = blocks.length; _j < _len1; _j++) {
-          block = blocks[_j];
-          if (block.item.group === item.group) {
-            if (block.item.startdate <= item.startdate && item.startdate <= block.item.enddate || block.item.startdate <= item.enddate && item.enddate <= block.item.enddate) {
-              bpos++;
-            }
-          }
-        }
-        yoffset = (this.options.lineheight + 10) * bpos;
         block = {
           name: item.name,
           x: x1,
-          y: ypos + yoffset,
+          y: ypos,
           index: bpos,
-          height: this.options.lineheight,
+          height: lineheight,
           width: x2 - x1,
           item: item
         };
         blocks.push(block);
       }
-      nowx = xscale(now);
-      this.graph.append("line").attr("x1", nowx).attr("y1", 0).attr("x2", nowx).attr("y2", this.height - this.options.margin.bottom).attr("stroke", "red");
-      this.nodes = this.graph.selectAll("rect").data(blocks).enter().append("g").attr("class", "node").attr("transform", function(d) {
+      return blocks;
+    };
+
+    RoadmapD3.prototype.count_mini_blocks = function(data, xscale, height, lineheight) {
+      var block, blocks, bpos, item, x1, x2, ypos, _i, _len;
+      blocks = [];
+      for (_i = 0, _len = data.length; _i < _len; _i++) {
+        item = data[_i];
+        x1 = xscale(item.startdate);
+        x2 = xscale(item.enddate);
+        ypos = 10;
+        bpos = 0;
+        block = {
+          name: item.name,
+          x: x1,
+          y: ypos,
+          index: bpos,
+          height: lineheight,
+          width: x2 - x1,
+          item: item
+        };
+        blocks.push(block);
+      }
+      return blocks;
+    };
+
+    RoadmapD3.prototype.draw_blocks = function(graph, blocks) {
+      var mynodes, nodes, self;
+      self = this;
+      nodes = graph.selectAll("rect").data(blocks).enter().append("g").attr("class", "node").attr("transform", function(d) {
         return "translate(" + d.x + "," + d.y + ")";
       });
-      this.nodes.append("title").text(function(d) {
+      nodes.append("title").text(function(d) {
         return d.name;
       });
-      this.nodes.append("rect").attr("class", "block").attr("width", function(d) {
+      nodes.append("rect").attr("class", "block").attr("width", function(d) {
         return d.width;
       }).attr("height", function(d) {
         return d.height;
       }).attr("rx", "10");
-      this.nodes.append("text").attr("class", "block").attr("dx", "1em").attr("dy", "1em").style("text-anchor", "start").text(function(d) {
+      nodes.append("text").attr("class", "block").attr("dx", "1em").attr("dy", "1em").text(function(d) {
         return d.name;
       });
-      this.nodes.on("mouseover", function(d, i) {
+      mynodes = nodes;
+      nodes.each(function(d, index) {
+        var curbox, current, i, node, nodebox, x1, x2, _i;
+        current = mynodes[0][index];
+        curbox = current.getBBox();
+        x1 = current.__data__.x;
+        x2 = current.__data__.x + curbox.width;
+        for (i = _i = 0; 0 <= index ? _i <= index : _i >= index; i = 0 <= index ? ++_i : --_i) {
+          node = mynodes[0][i];
+          nodebox = node.getBBox();
+          if (i !== index) {
+            if (node.__data__.x <= x1 && x1 <= node.__data__.x + nodebox.width || node.__data__.x <= x2 && x2 <= node.__data__.x + nodebox.width) {
+              current.__data__.y += nodebox.height;
+            }
+          }
+        }
+        d3.select(current).attr("transform", function(d) {
+          return "translate(" + d.x + "," + d.y + ")";
+        });
+      });
+      return nodes;
+    };
+
+    RoadmapD3.prototype.add_node_events = function(nodes) {
+      var self;
+      self = this;
+      nodes.on("mouseover", function(d, i) {
         return d3.select(this).select('rect').classed("highlight", true);
       });
-      this.nodes.on("mouseout", function(d, i) {
+      nodes.on("mouseout", function(d, i) {
         return d3.select(this).select('rect').classed("highlight", false);
       });
-      this.nodes.on("click", function(d, i) {
+      nodes.on("click", function(d, i) {
         var node;
-        node = self.nodes[0][i];
+        node = nodes[0][i];
         return $(self).trigger("select", {
           data: d,
           node: node
@@ -303,7 +348,7 @@
     };
 
     RoadmapD3.prototype.draw_mini = function(data) {
-      var mrange, rangex, self, x1, x2;
+      var blocks, graph, mrange, nodes, rangex, self, view, viewdrag, x1, x2, xscale;
       self = this;
       this.minisvg = d3.select(this.target).append("svg").attr("width", this.width).attr("height", this.options.miniheight).attr("class", "miniview");
       rangex = this.get_time_range(this.options.minirangeleft, this.options.minirangeright);
@@ -312,7 +357,23 @@
       mrange = this.get_main_range();
       x1 = this.miniXaxis.scale()(mrange[0]);
       x2 = this.miniXaxis.scale()(mrange[1]);
-      this.minisvg.append("g").append("rect").attr("class", "glasswindow").attr("fill-opacity", "0.4").attr("x", x1).attr("width", x2 - x1).attr("height", this.options.miniheight);
+      viewdrag = d3.behavior.drag();
+      view = this.minisvg.append("g").append("rect").attr("class", "glasswindow").attr("fill-opacity", "0.4").attr("x", x1).attr("width", x2 - x1).attr("height", this.options.miniheight).call(viewdrag);
+      graph = this.minisvg.append("g");
+      xscale = this.miniXaxis.scale();
+      blocks = this.count_mini_blocks(data, xscale, this.options.miniheight - this.options.margin.bottom, 3);
+      nodes = this.draw_blocks(graph, blocks);
+      viewdrag.on("drag", function(d) {
+        var mainleft, mainx, newx, xpos, xtime, zscale;
+        xpos = d3.mouse(this)[0];
+        xtime = self.miniXaxis.scale().invert(xpos);
+        mainx = self.xAxis.scale()(xtime);
+        zscale = self.zoom.scale();
+        mainleft = self.zoom.translate()[0];
+        newx = (mainleft - mainx) / zscale;
+        console.log("" + xpos + ", " + zscale + ", " + mainleft + " " + mainx + " " + newx);
+        return self.move_to(newx, d3.select(".glasswindow"));
+      });
       return this.minisvg.on("click", function(d, i) {
         var mainleft, mainx, newx, xpos, xtime, zscale;
         xpos = d3.mouse(this)[0];
