@@ -343,7 +343,7 @@ class @RoadmapD3
       self.move_to(newx, d3.select(".glasswindow"))
 
     # mouse event handlers
-    viewdrag.on "drag", (d) -> move_window()
-    @minisvg.on "click", (d, i) -> move_window()
+    viewdrag.on "drag", move_window
+    @minisvg.on "click", move_window
 
 

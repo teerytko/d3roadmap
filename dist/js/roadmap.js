@@ -376,12 +376,8 @@
         console.log("" + xpos + ", " + zscale + ", " + mainleft + " " + mainx + " " + newx);
         return self.move_to(newx, d3.select(".glasswindow"));
       };
-      viewdrag.on("drag", function(d) {
-        return move_window();
-      });
-      return this.minisvg.on("click", function(d, i) {
-        return move_window();
-      });
+      viewdrag.on("drag", move_window);
+      return this.minisvg.on("click", move_window);
     };
 
     return RoadmapD3;
