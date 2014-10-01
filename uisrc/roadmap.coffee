@@ -293,7 +293,10 @@ class @RoadmapD3
     )
     nodes.on("click", (d, i) ->
       node = nodes[0][i]
+      d3.select('.selected').classed('selected', false)
+      d3.select(node).select('rect').classed('selected', true)
       $(self).trigger "select", {data: d, node: node}
+
     )  
     return
 
@@ -339,9 +342,8 @@ class @RoadmapD3
       console.log "#{xpos}, #{zscale}, #{mainleft} #{mainx} #{newx}"
       self.move_to(newx, d3.select(".glasswindow"))
 
-
     # mouse event handlers
     viewdrag.on "drag", (d) -> move_window()
-    @minisvg.on("click", (d, i) -> move_window()
+    @minisvg.on "click", (d, i) -> move_window()
 
 

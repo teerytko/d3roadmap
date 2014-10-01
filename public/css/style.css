@@ -5,6 +5,9 @@
 .chart rect.block.highlight {
   fill: #0099FF;
 }
+.chart rect.block.selected {
+  fill: #005C99;
+}
 .chart text.block {
   fill: white;
   text-anchor: start;

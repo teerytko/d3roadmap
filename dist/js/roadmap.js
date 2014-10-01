@@ -340,6 +340,8 @@
       nodes.on("click", function(d, i) {
         var node;
         node = nodes[0][i];
+        d3.select('.selected').classed('selected', false);
+        d3.select(node).select('rect').classed('selected', true);
         return $(self).trigger("select", {
           data: d,
           node: node
@@ -348,7 +350,7 @@
     };
 
     RoadmapD3.prototype.draw_mini = function(data) {
-      var blocks, graph, mrange, nodes, rangex, self, view, viewdrag, x1, x2, xscale;
+      var blocks, graph, move_window, mrange, nodes, rangex, self, view, viewdrag, x1, x2, xscale;
       self = this;
       this.minisvg = d3.select(this.target).append("svg").attr("width", this.width).attr("height", this.options.miniheight).attr("class", "miniview");
       rangex = this.get_time_range(this.options.minirangeleft, this.options.minirangeright);
@@ -363,7 +365,7 @@
       xscale = this.miniXaxis.scale();
       blocks = this.count_mini_blocks(data, xscale, this.options.miniheight - this.options.margin.bottom, 3);
       nodes = this.draw_blocks(graph, blocks);
-      viewdrag.on("drag", function(d) {
+      move_window = function() {
         var mainleft, mainx, newx, xpos, xtime, zscale;
         xpos = d3.mouse(this)[0];
         xtime = self.miniXaxis.scale().invert(xpos);
@@ -373,17 +375,12 @@
         newx = (mainleft - mainx) / zscale;
         console.log("" + xpos + ", " + zscale + ", " + mainleft + " " + mainx + " " + newx);
         return self.move_to(newx, d3.select(".glasswindow"));
+      };
+      viewdrag.on("drag", function(d) {
+        return move_window();
       });
       return this.minisvg.on("click", function(d, i) {
-        var mainleft, mainx, newx, xpos, xtime, zscale;
-        xpos = d3.mouse(this)[0];
-        xtime = self.miniXaxis.scale().invert(xpos);
-        mainx = self.xAxis.scale()(xtime);
-        zscale = self.zoom.scale();
-        mainleft = self.zoom.translate()[0];
-        newx = (mainleft - mainx) / zscale;
-        console.log("" + xpos + ", " + zscale + ", " + mainleft + " " + mainx + " " + newx);
-        return self.move_to(newx, d3.select(".glasswindow"));
+        return move_window();
       });
     };
 
