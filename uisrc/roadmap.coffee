@@ -1,7 +1,6 @@
 
 defaults = {
   width: 480,
-  height: 400,
   miniheight: 100,
   minirangeleft: 56,
   minirangeright: 360,
@@ -15,9 +14,163 @@ extend = (destination, source) ->
     destination[property] = source[property]
   return destination
 
+class OrderedDict
+  constructor: (@keyname) ->
+    @order = []
+    @data = {}
+
+  append: (item) ->
+    id = item[@keyname]
+    @data[id] = item
+    if id not in @order
+      @order.push id
+
+  insert: (index, item) ->
+    id = item[@keyname]
+    if id in @order
+        index = @order.indexOf id
+        @order.splice(index, 1)
+    @data[id] = item
+    @order.splice(index, 0, id)
+
+  keys: () ->
+    # Get a list of the keys in order
+    (id for id in @order)
+
+  list: () ->
+    # Get a list of the items in order
+    (@data[id] for id in @order)
+
+  get: (id) ->
+    @data[id]
+
+  has: (id) ->
+    id in @order
+
+  pop: (id) ->
+    item = @data[id]
+    @remove(id)
+    item
+
+  top: () ->
+    return @data[@order[@order.length-1]]
+
+  remove: (id) ->
+    index = @order.indexOf(id)
+    if index == -1
+      throw Error("item #{id} not found!")
+    else
+      @order.splice(index, 1)
+      delete @data[id]
+
+  empty: (id) ->
+    @order = []
+    @data = {}
+
+
+class Group
+  constructor: (@name) ->
+    @projects = new OrderedDict("name")
+    @y = 0
+    @height = 0
+
+  add_project: (project) ->
+    @projects.append(project)
+
+  max_layers: () ->
+    overlaps = []
+    for prj in @projects.list()
+      overlaps.push prj.overlapcount 
+    return Math.max.apply(null, overlaps)
+
+
+class Project
+  constructor: (@name, @group, @data) ->
+    @start = @data.startdate
+    @end = @data.enddate
+    @overlapcount = 0
+
+  overlaps: (other) ->
+    if other.start <= @start and @start <= other.end \
+    or other.start <= @end and @end <= other.end
+      return true
+
+class RoadmapModel
+  constructor: () ->
+    @groups = new OrderedDict("name")
+
+  add_data: (data) ->
+    for item in data
+      if item.group not in @groups.keys()
+        @groups.append(new Group(item.group))
+      group = @groups.get(item.group)
+      project = new Project(item.name, group, item)
+      console.log "Adding project #{item.name}"
+      group.add_project(project)
+    @groups.order.sort()
+
+  calculate: () ->
+    # calculate the group overlaps
+    for group in @groups.list()
+      projects = group.projects.list()
+      for i in [0..projects.length-1]
+        project = projects[i]
+        for j in [0..i]
+          other = projects[j]
+          if project != other
+            if project.overlaps(other)
+              project.overlapcount++
+
+  debug: () ->
+    for group in @groups.list()
+      console.log "Group: #{group.name}, max_layers #{group.max_layers()}"
+      for project in group.projects.list()
+        console.log "  Prj: #{project.name}"
+
+  get_group_dicts: (groups) ->
+    @groupheight = @height / groups.length
+    grouppos = 0
+    groupdicts =[]
+    for groupname in groups
+      group = {
+        name : groupname,
+        index: grouppos,
+        ypos: grouppos*@groupheight,
+        height: @groupheight
+      }
+      groupdicts.push group
+      grouppos++
+    return groupdicts
+
+  add_blocks: (data, xscale, height, lineheight) ->
+    blocks = []
+    # count the positions of the blocks
+    for item in data
+      x1 = xscale(item.startdate)
+      x2 = xscale(item.enddate)
+      group = @get_group(item.group)
+      bpos = 0
+      block = {
+        name: item.name,
+        x: x1, 
+        y: group.ypos,
+        gpos: group.index
+        height: lineheight, 
+        width: x2-x1
+        item: item
+      }
+      blocks.push block
+    return blocks
+
+  create_model: (data) ->
+    @add_data(data)
+    #@get_group_dicts(@groups)
+    #return @count_blocks(data, xscale, @height-@options.margin.bottom, @options.lineheight)
+
 class @RoadmapD3
   constructor: (@target, options = {}) ->
     @options = extend(defaults, options)
+    @model = new RoadmapModel()
     self = @
     window.onresize = (e) -> self.update_window(e, self)
 
@@ -39,7 +192,6 @@ class @RoadmapD3
     @minisvg.select(".glasswindow")
       .attr("x", x1)
       .attr("width", x2-x1)
-
 
   get_main_range: () ->
     scale = @xAxis.scale()
@@ -69,26 +221,6 @@ class @RoadmapD3
     backtime.setDate(backtime.getDate()-back)
     forwardtime.setDate(forwardtime.getDate()+forward)
     return [backtime, forwardtime]
-
-  get_groups: (data) ->
-    groups = []
-    for item in data
-      if item.group not in groups
-        groups.push item.group
-    groups.sort()
-    @groupheight = @height / groups.length
-    grouppos = 0
-    groupdicts =[]
-    for groupname in groups
-      group = {
-        name : groupname,
-        index: grouppos,
-        ypos: grouppos*@groupheight,
-        height: @groupheight
-      }
-      groupdicts.push group
-      grouppos++
-    return groupdicts
 
   validate_data: (data) ->
     @lastdata = data
@@ -133,10 +265,14 @@ class @RoadmapD3
     @height = @options.height
     # limit the max number of groups?
     @rangex = @get_time_range(@options.range_back, @options.range_forward)
-    @xAxis = @create_axis(@rangex, @height-@options.margin.bottom, @width)
-    @groups = @get_groups(data)
-    @draw_mini(data)
-
+    @xAxis = @create_axis(@rangex, 5, @width)
+    xscale = @xAxis.scale()
+    # calculate data for the elements to show    
+    @model.create_model(data)
+    @model.calculate()
+    @model.debug()
+    
+    @draw_mini(@model)
     @zoom = d3.behavior.zoom()
       .x(@xAxis.scale())
       .scaleExtent([0, 10])
@@ -145,143 +281,181 @@ class @RoadmapD3
     @svg = d3.select(self.target)
       .append("svg")      
         .attr("width", @width)
-        .attr("height", @height)
         .call(@zoom)
 
-    @draw_groups(@groups)
-
+    background = @svg.append("g")
+      .attr("class", "background")
     @graph = @svg.append("g")
       .attr("class", "chart")
-    @graph.append("g")
-        .attr("transform", "translate(" + 0 + "," + 0 + ")")
+    captions = @svg.append("g")
+      .attr("class", "captions")
 
-    xscale = @xAxis.scale()
+
+    @draw_groups(@graph, @model, xscale)
+    nodes = @graph.selectAll('.node')
+    @add_node_events(nodes)
+    backheight = background[0][0].getBBox().height
+    chartheight = @graph[0][0].getBBox().height
+    @height = backheight + @options.margin.bottom
+    captions.append("g")
+      .attr("class", "x axis")
+      .attr("stroke-dasharray", "2,2")
+      .attr("transform", "translate(" + 0 + "," + backheight + ")")
+      .call(@xAxis)
+    @svg.attr("height", @height)
+
     # Add line for now
     now = new Date
     nowx = xscale(now)
     @graph.append("line")
+      .attr("stroke-dasharray", "2,2")
       .attr("x1", nowx)
       .attr("y1", 0)
       .attr("x2", nowx)
-      .attr("y2", @height-@options.margin.bottom)
+      .attr("y2", backheight)
       .attr("stroke", "red")
 
-    blocks = @count_blocks(data, xscale, @height-@options.margin.bottom, @options.lineheight)
-    nodes = @draw_blocks(@graph, blocks)
-    @add_node_events(nodes)
 
-    @svg.append("g")
-      .attr("class", "x axis")
-      .attr("stroke-dasharray", "2,2")
-      .call(@xAxis)
+  draw_groups: (graph, model, xscale) ->
+    groups = model.groups.list()
+    for i in [0..groups.length-1]
+      group = groups[i]
+      group.index = i
+      groupgraph = graph.append('g')
+      for project in group.projects.list()
+        block = @get_block(project, xscale)
+        @draw_block(groupgraph, block, @options.lineheight)
+      if i > 0
+        prevgroup = groups[i-1]
+        group.y = prevgroup.y + prevgroup.height
+      else
+        group.y = 0
+      group.height = groupgraph[0][0].getBBox().height+10
+      groupgraph.attr("transform", "translate(" + 0 + "," + group.y + ")" )
 
-  draw_groups: (groups) ->
-    groupnodes = @svg.selectAll("g.group")
+    background = @svg.select('.background')
+    captions = @svg.select('.captions')
+    background.selectAll("g.group")
       .data(groups)
         .enter().append("g")
           .attr("class", "group")
-          .attr("transform", (d) -> "translate(" + 0 + "," + d.ypos + ")" )
-    groupnodes.append("rect")
-      .attr("class", (d) -> if d.index % 2 == 0 then "group even" else "group odd")
-      .attr("fill-opacity", "0.4")
-      .attr("width", @width)
-      .attr("height", (d) -> d.height)
-    groupnodes.append("text")
-      .attr("class", "group")
-      .attr("dy", "1em" )
-      .attr("dx", "1em" )
-      .attr("font-size", "2em" )
-      .text( (d) -> return d.name )
-
-  get_group: (name) ->
-    for group in @groups
-      if group.name == name
-        return group
-    return null
-
-  count_blocks: (data, xscale, height, lineheight) ->
-    blocks = []
-    # count the positions of the blocks
-    for item in data
-      x1 = xscale(item.startdate)
-      x2 = xscale(item.enddate)
-      ypos = @get_group(item.group).ypos
-      bpos = 0
-      block = {
-        name: item.name,
-        x: x1, 
-        y: ypos,
-        index: bpos,
-        height: lineheight, 
-        width: x2-x1
-        item: item
-      }
-      blocks.push block
-    return blocks
-
-  count_mini_blocks: (data, xscale, height, lineheight) ->
-    blocks = []
-    # count the positions of the blocks
-    for item in data
-      x1 = xscale(item.startdate)
-      x2 = xscale(item.enddate)
-      ypos = 10
-      bpos = 0
-      block = {
-        name: item.name,
-        x: x1, 
-        y: ypos,
-        index: bpos,
-        height: lineheight, 
-        width: x2-x1
-        item: item
-      }
-      blocks.push block
-    return blocks
-
-  draw_blocks: (graph, blocks) ->
-    self = @
-    
-    #@blocks = blocks
-
-    # Add roadmap items (blocks)
-    nodes = graph.selectAll("rect")
-      .data(blocks)
+          .attr("transform", (d) -> "translate(" + 0 + "," + d.y + ")" )
+          .append("rect")
+            .attr("class", (d) -> if d.index % 2 == 0 then "group even" else "group odd")
+            #.attr("fill-opacity", "0.4")
+            .attr("width", @width)
+            .attr("height", (d) -> d.height)
+    captions.selectAll("g.group")
+      .data(groups)
         .enter().append("g")
-          .attr("class", "node")
-          .attr("transform", (d) -> "translate(" + d.x + "," + d.y + ")" )
-    nodes.append("title")
-      .text( (d) -> return d.name )
-    nodes.append("rect")
+          .attr("class", "group")
+          .attr("transform", (d) -> "translate(" + 0 + "," + d.y + ")" )
+          .append("text")
+            .attr("class", "group")
+            .attr("dy", "1em" )
+            .attr("dx", "1em" )
+            .attr("font-size", "2em" )
+            .text( (d) -> return d.name )
+    return
+
+  get_block: (prj, xscale) ->
+    x1 = xscale(prj.start)
+    x2 = xscale(prj.end)
+    block = {
+      name: prj.name,
+      x: x1,
+      y: 5,
+      layer: prj.overlapcount
+      width: x2-x1,
+      prj: prj
+    }
+
+  draw_block: (graph, block, lineheight) ->
+    self = @
+    node = graph.append("g")
+      .attr("class", "node")
+    node.append("title")
+      .text( block.name )
+    node.append("rect")
       .attr("class", "block")
-      .attr("width", (d) -> return d.width )
-      .attr("height", (d) -> return d.height )
+      .attr("width", block.width )
+      .attr("height", lineheight )
       .attr("rx", "10" )
-    nodes.append("text")
-      #.attr("x", (d) -> return d.width/2 )
+    node.append("text")
       .attr("class", "block")
       .attr("dx", "1em" )
       .attr("dy", "1em" )
-      .text( (d) -> return d.name )
-    mynodes = nodes
-    nodes.each (d, index) ->
-      current = mynodes[0][index]
-      curbox = current.getBBox()
-      x1 = current.__data__.x
-      x2 = current.__data__.x + curbox.width
-      # Check overlapping
-      for i in [0..index]
-        node = mynodes[0][i]
-        nodebox = node.getBBox()
-        if i != index
-          if node.__data__.x <= x1 and x1 <= node.__data__.x+nodebox.width \
-          or node.__data__.x <= x2 and x2 <= node.__data__.x+nodebox.width
-            current.__data__.y += nodebox.height
-      d3.select(current).attr("transform", (d) -> "translate(" + d.x + "," + (d.y) + ")" )
-      return
+      .text( block.name )
+    # Check possible overlaps
+    node[0][0].__data__ = block
+    box = node[0][0].getBBox()
+    for g in graph.selectAll('g')[0]
+      if g.__data__ != block
+        gbox = g.getBBox()
+        x1 = block.x
+        x2 = block.x + box.width
+        if g.__data__.x <= x1 and x1 <= g.__data__.x+gbox.width \
+        or g.__data__.x <= x2 and x2 <= g.__data__.x+gbox.width
+          newy = g.__data__.y + gbox.height
+          if newy >= block.y
+            block.y = newy
+    node.attr("transform", "translate(" + block.x + "," + block.y + ")" )
+    return
 
+  count_mini_blocks: (model, xscale, height) ->
+    blocks = []
+    # count the positions of the blocks
+    for group in model.groups.list()
+      for prj in group.projects.list()
+        x1 = xscale(prj.start)
+        x2 = xscale(prj.end)
+        block = {
+          name: prj.name,
+          x: x1,
+          y: 8,
+          layer: prj.overlapcount
+          width: x2-x1,
+          prj: prj
+        }
+        blocks.push block
+    return blocks
 
-    return nodes
+  draw_blocks: (graph, blocks, lineheight) ->
+    self = @
+    #@blocks = blocks
+    # Add roadmap items (blocks)
+    #blockheight = 0
+    for d in blocks
+      node = graph.append("g")
+        .attr("class", "node")
+      node.append("title")
+        .text( d.name )
+      node.append("rect")
+        .attr("class", "block")
+        .attr("width", d.width )
+        .attr("height", lineheight )
+        .attr("rx", "10" )
+      node.append("text")
+        #.attr("x", (d) -> return d.width/2 )
+        .attr("class", "block")
+        .attr("dx", "1em" )
+        .attr("dy", "1em" )
+        .text( d.name )
+      # Check possible overlaps
+      node[0][0].__data__ = d
+      box = node[0][0].getBBox()
+      for g in graph.selectAll('g')[0]
+        if g.__data__ != d
+          gbox = g.getBBox()
+          x1 = d.x
+          x2 = d.x + box.width
+          if g.__data__.x <= x1 and x1 <= g.__data__.x+gbox.width \
+          or g.__data__.x <= x2 and x2 <= g.__data__.x+gbox.width
+            newy = g.__data__.y + gbox.height
+            if newy >= d.y
+              d.y = newy
+      node.attr("transform", "translate(" + d.x + "," + d.y + ")" )
+    return
 
   add_node_events: (nodes) ->
     self = this
@@ -300,7 +474,7 @@ class @RoadmapD3
     )  
     return
 
-  draw_mini: (data) ->
+  draw_mini: (model) ->
     self = @
     @minisvg = d3.select(@target)
       .append("svg")
@@ -330,8 +504,8 @@ class @RoadmapD3
 
     graph = @minisvg.append("g")
     xscale = @miniXaxis.scale()
-    blocks = @count_mini_blocks(data, xscale, @options.miniheight-@options.margin.bottom, 3)
-    nodes = @draw_blocks(graph, blocks)
+    blocks = @count_mini_blocks(model, xscale, @options.miniheight-@options.margin.bottom)
+    nodes = @draw_blocks(graph, blocks, 3)
     move_window = () ->
       xpos = d3.mouse(this)[0]
       xtime = self.miniXaxis.scale().invert(xpos)
