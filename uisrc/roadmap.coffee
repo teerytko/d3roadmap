@@ -14,6 +14,14 @@ extend = (destination, source) ->
     destination[property] = source[property]
   return destination
 
+# Using this algorithm to get the weekNumber
+# and match it to what Outlook uses
+Date.prototype.getWeekNumber = ->
+    d = new Date(+this)
+    d.setHours(0,0,0)
+    d.setDate(d.getDate()+4-(d.getDay()||7))
+    return Math.ceil((((d-new Date(d.getFullYear(),0,1))/8.64e7)+1)/7) + 1
+
 class OrderedDict
   constructor: (@keyname) ->
     @order = []
@@ -243,13 +251,16 @@ class @RoadmapD3
         item.enddate = new Date(item.startdate)
         item.enddate.setDate(item.enddate.getDate()+7)
 
-  create_axis: (rangex, height, width, format = null) ->
+  create_axis: (rangex, height, width, formatWeek = null) ->
     x = d3.time.scale()
         .range([0, width])
-    formatWeek = (d) ->
-      if not format?
-        format = d3.time.format("%U.%w")
-      return "Week #{format(d)}"
+    if not formatWeek?
+      formatWeek = (d) ->
+        if d.getDay() == 0
+          return "Week #{d.getWeekNumber()}"
+        else
+          df =  d3.time.format("%a")
+          return "#{df(d)}"
     axis = d3.svg.axis()
         .scale(x)
         .tickSize(height)
@@ -482,8 +493,10 @@ class @RoadmapD3
         .attr("height", @options.miniheight)
         .attr("class", "miniview")
     rangex = @get_time_range(@options.minirangeleft, @options.minirangeright)
+    formatMiniWeek = (d) ->
+      return "Week #{d.getWeekNumber()}"
 
-    @miniXaxis = @create_axis(rangex, @options.miniheight-20, @width, d3.time.format("%U"))
+    @miniXaxis = @create_axis(rangex, @options.miniheight-20, @width, formatMiniWeek)
     @minisvg.append("g")
       .attr("class", "x axis")
       .attr("stroke-dasharray", "2,2")
